@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Analysis</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f0f8ff; /* Light blue background */
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            margin-top: 50px;
+        }
+        h1 {
+            color: #007bff; /* Blue color for heading */
+        }
+        .btn-blue {
+            background-color: #007bff;
+            color: white;
+            border: none;
+        }
+        .btn-blue:hover {
+            background-color: #0056b3;
+        }
+        .analysis-report {
+            margin-top: 30px;
+        }
+        .analysis-report img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        /* Spinner styles */
+        .spinner-container {
+            display: none;
+            text-align: center;
+            margin-top: 30px;
+        }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #007bff;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+
+        /* Spinner animation */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 class="text-center">Image Analysis</h1>
+    <form id="analysis-form" method="POST" enctype="multipart/form-data" action="{{ url_for('analysis') }}">
+        <div class="form-group">
+            <label for="file">Choose an image to analyze:</label>
+            <input type="file" class="form-control" name="file" accept="image/png, image/jpeg, image/jpg" required>
+        </div>
+        <button type="submit" class="btn btn-blue btn-block">Analyze Image</button>
+    </form>
+
+    <!-- Loading Spinner -->
+    <div id="loading-spinner" class="spinner-container">
+        <div class="spinner"></div>
+        <p>Please wait while we analyze your image...</p>
+    </div>
+
+    {% if analysis_report %}
+        <div class="analysis-report">
+            <h3 class="text-primary">Analysis Report:</h3>
+            <p>{{ analysis_report }}</p>
+            <img src="{{ url_for('static', filename=image_path) }}" alt="Analyzed Image">
+        </div>
+    {% endif %}
+</div>
+
+<!-- Bootstrap JS (Optional for components like modals, tooltips, etc.) -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+<script>
+    // Show the loading spinner when the form is submitted
+    document.getElementById('analysis-form').onsubmit = function() {
+        document.getElementById('loading-spinner').style.display = 'block'; // Show spinner
+    };
+</script>
+
+</body>
+</html>
