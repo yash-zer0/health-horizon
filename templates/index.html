@@ -243,7 +243,7 @@
                 <div id="collapsePrecaution" class="accordion-collapse collapse" aria-labelledby="headingPrecaution" data-bs-parent="#resultAccordion">
                     <div class="accordion-body" style="background-color: #FFF8F0;">
                         <ul>
-                            {% for i in my_precautions %}
+                            {% for i in precautions %}
                                 <li>{{ i }}</li>
                             {% endfor %}
                         </ul>
@@ -298,7 +298,7 @@
                 <div id="collapseDiets" class="accordion-collapse collapse" aria-labelledby="headingDiets" data-bs-parent="#resultAccordion">
                     <div class="accordion-body" style="background-color: #FFFFF0;">
                         <ul>
-                            {% for i in my_diet %}
+                            {% for i in rec_diet %}
                                 <li>{{ i }}</li>
                             {% endfor %}
                         </ul>
