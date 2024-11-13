@@ -3,9 +3,64 @@ import numpy as np
 import pandas as pd
 import pickle
 
+#chatbot code
+import os
+import google.generativeai as genai
+from flask import Flask, render_template, request, flash
+from werkzeug.utils import secure_filename
 
-#main
+# Configure your Gemini API key
 app = Flask(__name__)
+genai.configure(api_key="AIzaSyD7Pu33RyjWbqmDtoVY0PQVUPcO9CzlwJo")
+app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg'}
+app.secret_key = 'your_secret_key'
+
+# Gemini model setup
+generation_config = {
+    "temperature": 1,
+    "top_p": 0.95,
+    "top_k": 40,
+    "max_output_tokens": 8192,
+    "response_mime_type": "text/plain",
+}
+
+model = genai.GenerativeModel(
+    model_name="gemini-1.5-pro-002",
+    generation_config=generation_config,
+)
+
+# Function to check if the file type is allowed
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
+# Upload function
+def upload_to_gemini(path, mime_type=None):
+    """Uploads the given file to Gemini."""
+    file = genai.upload_file(path, mime_type=mime_type)
+    print(f"Uploaded file '{file.display_name}' as: {file.uri}")
+    return file
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#
+#main
 
 
 
@@ -58,37 +113,23 @@ def get_predicted_value(patient_symptoms):
 def index():
     return render_template("index.html")
 
-
 @app.route('/predict', methods=['GET', 'POST'])
-def home():
+def predict():
     if request.method == 'POST':
         symptoms = request.form.get('symptoms')
         
-        print(symptoms)
-        if symptoms =="Symptoms":
+        if symptoms == "Symptoms":
             message = "Please either write symptoms or you have written misspelled symptoms"
             return render_template('index.html', message=message)
         else:
-
-            
             user_symptoms = [s.strip() for s in symptoms.split(',')]
-          
-            user_symptoms = [symptom.strip("[]' ") for symptom in user_symptoms]
             predicted_disease = get_predicted_value(user_symptoms)
             dis_des, precautions, medications, rec_diet, workout = helper(predicted_disease)
 
-            my_precautions = []
-            for i in precautions[0]:
-                my_precautions.append(i)
-
             return render_template('index.html', predicted_disease=predicted_disease, dis_des=dis_des,
-                                   my_precautions=my_precautions, medications=medications, my_diet=rec_diet,
+                                   precautions=precautions, medications=medications, rec_diet=rec_diet,
                                    workout=workout)
-
     return render_template('index.html')
-
-
-
 
 @app.route('/about')
 def about():
@@ -102,11 +143,66 @@ def contact():
 def developer():
     return render_template("developer.html")
 
+@app.route('/analysis', methods=['GET', 'POST'])
+def analysis():
+    analysis_report = None
+    image_path = None
+
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            flash("No file part", 'error')
+            return render_template('analysis.html', analysis_report=analysis_report, image_path=image_path)
+
+        file = request.files['file']
+        if file.filename == '':
+            flash("No selected file", 'error')
+            return render_template('analysis.html', analysis_report=analysis_report, image_path=image_path)
+
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(file_path)
+
+            # Upload to Gemini
+            uploaded_file_info = upload_to_gemini(file_path, mime_type=file.content_type)
+
+            # Analyze using Gemini API
+            chat_session = model.start_chat(history=[{
+                "role": "user",
+                "parts": [
+                    uploaded_file_info,
+                    "Please analyze this image based on the provided system prompt.\n",
+                ],
+            }])
+
+            system_prompt = """
+            You are a highly skilled medical practitioner specializing in image analysis, tasked with examining medical images provided for evaluation. The images can range from X-rays, MRIs, CT scans, to other types of medical imaging. Your task is to analyze the image and provide a thorough evaluation.
+
+            Please provide the following:
+            - A detailed description of the key features visible in the image. If the image is normal, explain the appearance of the anatomical structures and any healthy features. If the image shows abnormalities, describe the condition, its size, location, and any implications for health.
+            - Assess the image quality, including the resolution and clarity. Discuss any limitations of the image that could affect the diagnosis.
+            - Offer general health advice related to the body part in question for normal images. If abnormalities are detected, provide treatment suggestions and follow-up steps.
+            - Conclude with a disclaimer that this analysis is for informational purposes only and should not be considered medical advice. The patient should consult a healthcare provider for a formal diagnosis and treatment plan.
+
+            Structure your response in clear paragraphs, without using bulleted lists or a formal, numbered outline. Ensure that each section flows logically to the next, creating a smooth, easy-to-read analysis. For example, first explain the key features visible in the image, then move on to an overall assessment, and finally, offer general advice or treatment recommendations if applicable.
+            """
+
+            response = chat_session.send_message(system_prompt)
+
+            analysis_report = response.text
+            image_path = file_path
+        else:
+            flash("Invalid file type. Please upload a valid image (PNG, JPG, JPEG).", 'error')
+
+    return render_template('analysis.html', analysis_report=analysis_report, image_path=image_path)
 
 @app.route('/blog')
 def blog():
     return render_template("blog.html")
 
+# Ensure the upload folder exists
+if not os.path.exists(app.config['UPLOAD_FOLDER']):
+    os.makedirs(app.config['UPLOAD_FOLDER'])
 
 if __name__ == '__main__':
     app.debug = True
